@@ -1,0 +1,8 @@
+# Generated locally (see README: "What a clean clone can and cannot reproduce")
+splits/
+cache/
+results/
+
+__pycache__/
+.pytest_cache/
+.ipynb_checkpoints/

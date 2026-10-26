@@ -1,0 +1,115 @@
+# The five case studies of reports/case_studies.md, for demo.py (a cached replay).
+#
+# Hand-authored and fixed: question ids, compared systems, source artifacts (relative to
+# results/), and the values the replay must reproduce from those artifacts. demo.py checks
+# every pin against the stored records before rendering. These cases are post hoc
+# qualitative examples, selected after the results were inspected.
+
+[[case]]
+id = "graph_success"
+number = 1
+title = "Graph success: following the link the first paragraph names"
+split = "test_agents"
+qid = "5a825bb455429940e5e1a874"
+kind = "rag_pair"
+systems = ["bm25_k10", "d3_k10"]
+labels = { bm25_k10 = "BM25 RAG (top 10)", d3_k10 = "D3 RAG = R (top 10)" }
+takeaway = "The question never names Fall Out Boy; D3's graph follows the title mention in the first paragraph and brings the second hop into the context."
+annotation = "Graph provenance: D3 added 'Fall Out Boy' by a forward title link from its rank-1 seed ('Folie à Deux (album)'). Recomputed post hoc with D3Retriever.last_added (deterministic); the run record stores only the ranking."
+
+[case.sources]
+bm25_k10 = "final/test_agents__bm25_k10.jsonl"
+d3_k10 = "final/test_agents__d3_k10.jsonl"
+
+[case.pins]
+answers = { bm25_k10 = "Chicago", d3_k10 = "Wilmette" }
+gold_ranks = { bm25_k10 = { "Folie à Deux (album)" = 1 }, d3_k10 = { "Fall Out Boy" = 6, "Folie à Deux (album)" = 1 } }
+not_retrieved = { bm25_k10 = ["Fall Out Boy"] }
+
+[[case]]
+id = "rerank_failure"
+number = 2
+title = "Reranking failure: a question-only reranker undoes the graph"
+split = "tune"
+qid = "5ae7f56e5542993210983fd1"
+kind = "rerank"
+systems = ["D3", "X1"]
+labels = { D3 = "D3 (graph expansion)", X1 = "X1 = D3 reranked by the MS MARCO cross-encoder (post hoc)" }
+takeaway = "The cross-encoder scores paragraphs against the question alone, so it pushes out the graph-added second hop; in this pipeline, the tested question-only reranker should not follow graph expansion."
+annotation = "Retrieval-only experiment on tune (no answers generated)."
+
+[case.sources]
+D3 = "tune/phase2b_rankings.jsonl"
+X1 = "tune/posthoc_x1_rankings.jsonl"
+
+[case.pins]
+gold_ranks = { D3 = { "Ron Weasley" = 6, "Rupert Grint" = 1 }, X1 = { "Ron Weasley" = 12, "Rupert Grint" = 1 } }
+not_retrieved = { B = ["Ron Weasley"] }
+graph_added = ["Ron Weasley"]
+
+[[case]]
+id = "agent_recovery"
+number = 3
+title = "Useful agent recovery: an evidence-dependent query"
+split = "test_agents"
+qid = "5ab6f7415542991d322236f4"
+kind = "agent"
+systems = ["d3_k10", "agent_single"]
+labels = { d3_k10 = "D3 RAG = R", agent_single = "Single agent" }
+takeaway = "R's context lacked the second hop; the agent's follow-up query named 'Tunisia', an entity taken from the retrieved text, and found it."
+
+[case.sources]
+d3_k10 = "final/test_agents__d3_k10.jsonl"
+agent_single = "final/test_agents__agent_single.jsonl"
+
+[case.pins]
+answers = { d3_k10 = "1970", agent_single = "1978" }
+gold_ranks = { d3_k10 = { "Sadok Sassi" = 1 } }
+not_retrieved = { d3_k10 = ["Tunisia national football team"] }
+follow_up_queries = ["Tunisia first World Cup appearance year"]
+stop_reason = "duplicate_query"
+
+[[case]]
+id = "unnecessary_search"
+number = 4
+title = "Unnecessary search: more context, a worse answer"
+split = "test_agents"
+qid = "5ab9547755429970cfb8ea6c"
+kind = "agent"
+systems = ["d3_k10", "agent_single"]
+labels = { d3_k10 = "D3 RAG = R", agent_single = "Single agent" }
+takeaway = "R already had both gold paragraphs; the agent kept searching, added off-target paragraphs, and answered from a distractor (consistent with reader distraction)."
+distractor = "List of Christopher Wren churches in London"
+
+[case.sources]
+d3_k10 = "final/test_agents__d3_k10.jsonl"
+agent_single = "final/test_agents__agent_single.jsonl"
+
+[case.pins]
+answers = { d3_k10 = "87", agent_single = "51" }
+gold_ranks = { d3_k10 = { "Great Fire of London" = 4, "St Dionis Backchurch" = 1 } }
+follow_up_queries = ["churches destroyed in great fire of london", "number of parish churches destroyed in great fire of london"]
+stop_reason = "max_searches"
+
+[[case]]
+id = "selection_loss"
+number = 5
+title = "Multi-agent selection loss: retrieved, then discarded"
+split = "test_agents"
+qid = "5a87aa135542996e4f3088b8"
+kind = "multi"
+systems = ["d3_k10", "multi_agent"]
+labels = { d3_k10 = "D3 RAG = R", multi_agent = "Multi-agent (frozen Phase 4)" }
+takeaway = "Both gold paragraphs were in search 1, and 'Cat Stevens' was shown to all three researcher calls, but none accepted it; the synthesizer never saw the composer's paragraph."
+
+[case.sources]
+d3_k10 = "final/test_agents__d3_k10.jsonl"
+multi_agent = "final/test_agents__multi_agent.jsonl"
+
+[case.pins]
+answers = { d3_k10 = "British", multi_agent = "Australian" }
+gold_ranks = { d3_k10 = { "Cat Stevens" = 6, "Jolyon James" = 1 } }
+requirements = ["The musical in which Jolyon James played Moonshadow.", "The nationality of the composer of that musical."]
+accepted = ["Jolyon James", "James Dooley (composer)", "Jackie James"]
+corrective_query = "nationality of the composer of Cat Stevens's musical"
+shown_not_accepted = { title = "Cat Stevens", researcher_calls = 3 }
