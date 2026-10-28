@@ -4,7 +4,7 @@
 #   pip install torch==2.12.1+cu130 --index-url https://download.pytorch.org/whl/cu130
 # On a CPU-only machine install the same version from https://download.pytorch.org/whl/cpu.
 # The LLM runs locally through Ollama 0.32.5 (installed separately, not via pip).
-numpy==2.4.4
+numpy==2.5.0
 pandas==3.0.3
 scipy==1.18.0
 torch==2.12.1
